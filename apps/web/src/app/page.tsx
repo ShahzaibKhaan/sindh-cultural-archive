@@ -1,198 +1,55 @@
-'use client';
+import { prisma } from '@repo/database';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { supabase } from './supabaseClient';
+async function getApprovedArtifacts() {
+  return await prisma.artifact.findMany({
+    where: { approved: true },
+    orderBy: { createdAt: 'desc' },
+  });
+}
 
-export default function AdminPortal() {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [location, setLocation] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title || !description || !location) {
-      alert('Please fill all required fields!');
-      return;
-    }
-
-    setUploading(true);
-    let publicUrl = '';
-
-    try {
-      // 1. Agar user ne image select ki hai, toh pehle use Supabase Storage mein upload karein
-      if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${Math.random()}_${Date.now()}.${fileExt}`;
-        const filePath = `artifacts/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('heritage-images')
-          .upload(filePath, imageFile);
-
-        if (uploadError) throw uploadError;
-
-        // Image ka Public link generate karein
-        const { data } = supabase.storage.from('heritage-images').getPublicUrl(filePath);
-        publicUrl = data.publicUrl;
-      }
-
-      // 2. Database table mein data insert karein (imageUrl aur approved: false ke sath)
-      const { error: insertError } = await supabase
-        .from('Artifact')
-        .insert([
-          { 
-            title, 
-            description, 
-            location, 
-            imageUrl: publicUrl,
-            approved: false // By default false taake admin dashboard se approve kare
-          }
-        ]);
-
-      if (insertError) throw insertError;
-
-      alert('Zabardast! Artifact successfully submitted for admin approval! 🎉');
-      
-      // Form fields ko clear karein
-      setTitle('');
-      setDescription('');
-      setLocation('');
-      setImageFile(null);
-
-      // File input element ko visually reset karne ke liye form reload ki zaroorat nahi
-      const fileInput = document.getElementById('image-input') as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
-
-    } catch (error: any) {
-      console.error('Error details:', error);
-      alert('Error saving data: ' + error.message);
-    } finally {
-      setUploading(false);
-    }
-  };
+export default async function HomePage() {
+  const artifacts = await getApprovedArtifacts();
 
   return (
-    <div style={{ background: '#F5F2EB', minHeight: '100vh', fontFamily: 'sans-serif', margin: 0, padding: 0 }}>
-      
-      {/* 🗺️ INTEGRATED AJRAK BLUE NAVBAR */}
-      <nav style={{ 
-        background: "#1A2A6C", 
-        padding: "15px 30px", 
-        display: "flex", 
-        justifyContent: "space-between", 
-        alignItems: "center",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
-      }}>
-        <div style={{ color: "#F5F2EB", fontWeight: "bold", fontSize: "18px" }}>
-          Sindh Heritage Vault 🏛️
-        </div>
-        <div style={{ display: "flex", gap: "20px" }}>
-          <Link href="/" style={{ color: "#F5F2EB", textDecoration: "none", fontWeight: "500", fontSize: "15px" }}>
-            📝 Add Artifact (Public)
-          </Link>
-          <Link href="/archive" style={{ color: "#F5F2EB", textDecoration: "none", fontWeight: "500", fontSize: "15px" }}>
-            🖼️ Public Archive
-          </Link>
+    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f9f6f0', minHeight: '100vh', margin: 0 }}>
+      {/* 🧭 NAVIGATION BAR (Oopar Option) */}
+      <nav style={{ backgroundColor: '#1e3a8a', padding: '15px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ color: 'white', fontWeight: 'bold', fontSize: '18px' }}>🏛️ Sindh Minority Heritage</span>
+        <div style={{ display: 'flex', gap: '20px' }}>
+          <a href="/" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>🏠 Home</a>
+          <a href="/submit-artifact" style={{ color: '#fcd34d', textDecoration: 'none', fontWeight: 'bold' }}>➕ Add Artifact (Form)</a>
+          <a href="/admin-portal-sindh" style={{ color: '#93c5fd', textDecoration: 'none', fontWeight: 'bold' }}>🔐 Admin Portal</a>
         </div>
       </nav>
 
-      {/* Main Form Container */}
-      <div style={{ padding: '50px 20px', maxWidth: '600px', margin: '0 auto' }}>
-        <div style={{ background: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', borderTop: '6px solid #1A2A6C' }}>
-          
-          <h2 style={{ color: '#1A2A6C', marginTop: 0, marginBottom: '10px', textAlign: 'center' }}>
-            Share Minority Heritage Asset
-          </h2>
-          <p style={{ color: '#777', fontSize: '14px', textAlign: 'center', marginBottom: '30px' }}>
-            Submit a cultural story, artifact detail, or historical site. Submissions are live after admin verification.
-          </p>
+      {/* Hero Section */}
+      <div style={{ textAlign: 'center', padding: '40px 20px', backgroundColor: '#fff', borderBottom: '1px solid #e5e7eb' }}>
+        <h1 style={{ color: '#1e3a8a', margin: '0 0 10px 0' }}>Digital Archive of Sindh’s Minority Cultural Heritage</h1>
+        <p style={{ color: '#4b5563', margin: 0 }}>Preserving history, temples, and traditions of Sindh's minority communities.</p>
+      </div>
 
-          <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#1A2A6C' }}>Artifact Title / Site Name</label>
-              <input 
-                type="text" 
-                placeholder="e.g., Sadhu Bela Temple, Sukkur" 
-                value={title} 
-                onChange={(e) => setTitle(e.target.value)}
-                style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box' }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#1A2A6C' }}>Description / History / Story</label>
-              <textarea 
-                rows={5} 
-                placeholder="Share the cultural significance, history, or community narrative of this asset..." 
-                value={description} 
-                onChange={(e) => setDescription(e.target.value)}
-                style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box', fontFamily: 'sans-serif', resize: 'vertical' }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#1A2A6C' }}>Geographical Location</label>
-              <input 
-                type="text" 
-                placeholder="e.g., Sukkur, Sindh" 
-                value={location} 
-                onChange={(e) => setLocation(e.target.value)}
-                style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #ccc', boxSizing: 'border-box' }}
-              />
-            </div>
-
-            {/* 📸 IMAGE UPLOAD FIELD */}
-            <div style={{ marginBottom: '30px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#1A2A6C' }}>
-                Upload Heritage Image 📸
-              </label>
-              <input 
-                id="image-input"
-                type="file" 
-                accept="image/*"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    setImageFile(e.target.files[0]);
-                  }
-                }}
-                style={{ 
-                  width: '100%', 
-                  padding: '10px', 
-                  borderRadius: '6px', 
-                  border: '1px solid #ccc', 
-                  background: '#fafafa',
-                  boxSizing: 'border-box',
-                  cursor: 'pointer'
-                }}
-              />
-            </div>
-
-            {/* SUBMIT BUTTON WITH LOADER STATE */}
-            <button 
-              type="submit" 
-              disabled={uploading}
-              style={{ 
-                width: '100%', 
-                padding: '14px', 
-                background: uploading ? '#A38A73' : '#1A2A6C', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: '6px', 
-                fontWeight: 'bold', 
-                fontSize: '16px',
-                cursor: uploading ? 'not-allowed' : 'pointer',
-                boxShadow: '0 4px 10px rgba(26,42,108,0.2)',
-                transition: 'background 0.2s ease'
-              }}
-            >
-              {uploading ? 'Processing & Uploading Image...' : 'Submit to Digital Vault'}
-            </button>
-          </form>
-
-        </div>
+      {/* Live Data Grid */}
+      <div style={{ padding: '30px' }}>
+        <h2 style={{ color: '#1e3a8a', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px' }}>🏛️ Explored Cultural Heritage</h2>
+        
+        {artifacts.length === 0 ? (
+          <p style={{ color: '#666', marginTop: '20px' }}>No approved artifacts to display yet. Use the Admin Portal to approve submitted items!</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', marginTop: '20px' }}>
+            {artifacts.map((item) => (
+              <div key={item.id} style={{ backgroundColor: '#fff', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' }}>
+                <img src={item.imageUrl} alt={item.title} style={{ width: '100%', height: '200px', objectFit: 'cover' }} />
+                <div style={{ padding: '16px' }}>
+                  <h3 style={{ margin: '0 0 8px 0', color: '#111827' }}>{item.title}</h3>
+                  <span style={{ backgroundColor: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
+                    {item.region} | {item.community}
+                  </span>
+                  <p style={{ color: '#4b5563', fontSize: '14px', marginTop: '12px' }}>{item.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
