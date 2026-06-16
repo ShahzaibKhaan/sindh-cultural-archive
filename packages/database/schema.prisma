@@ -1,0 +1,20 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 🏺 Cultural Artifacts Table
+model Artifact {
+  id          String   @id @default(uuid())
+  title       String   
+  community   String   
+  region      String   
+  description String   @db.Text
+  imageUrl    String   
+  createdAt   DateTime @default(now())
+  approved Boolean @default(false)
+}

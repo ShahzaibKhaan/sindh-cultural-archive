@@ -1,0 +1,12 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+allowBuilds:
+  '@prisma/engines': set this to true or false
+  prisma: set this to true or false
+
+# Is line se pnpm ko pata chal jayega ke Prisma ki scripts safe hain
+allowedBuiltDependencies:
+  - prisma
+  - "@prisma/engines"
