@@ -1,158 +1,132 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '../supabaseClient';
+import { useMemo, useState } from 'react';
+import { communities, heritageArtifacts } from '../../data/heritageData';
 
-interface Artifact {
-  id: string;
-  title: string;
-  description: string;
-  location: string;
-  imageUrl?: string; // 📸 Image URL string type
-}
+export default function ArchivePage() {
+  const [query, setQuery] = useState('');
+  const [community, setCommunity] = useState('All');
+  const [aiResponse, setAiResponse] = useState('');
+  const [loadingAi, setLoadingAi] = useState(false);
 
-export default function ArchiveGallery() {
-  const [artifacts, setArtifacts] = useState<Artifact[]>([]);
-  const [loading, setLoading] = useState(true);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return heritageArtifacts.filter((item) => {
+      const matchesCommunity = community === 'All' || item.community === community;
+      const searchable = `${item.title} ${item.region} ${item.community} ${item.description}`.toLowerCase();
+      return matchesCommunity && (!q || searchable.includes(q));
+    });
+  }, [query, community]);
 
-  const fetchArtifacts = async () => {
-    setLoading(true);
-    
-    // Supabase se sirf approved records uthayenge
-    const { data, error } = await supabase
-      .from('Artifact')
-      .select('*')
-      .eq('approved', true);
-
-    if (error) {
-      console.error('Error fetching data:', error.message);
-    } else if (data) {
-      setArtifacts(data as Artifact[]);
+  const askAi = async () => {
+    if (!query.trim()) return;
+    setLoadingAi(true);
+    setAiResponse('');
+    try {
+      const response = await fetch('/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'search', searchTerm: query }),
+      });
+      const data = await response.json();
+      setAiResponse(response.ok ? data.text : data?.error?.message || 'AI request failed.');
+    } catch (error: any) {
+      setAiResponse(error.message || 'AI request failed.');
+    } finally {
+      setLoadingAi(false);
     }
-    setLoading(false);
   };
 
-  useEffect(() => {
-    fetchArtifacts();
-  }, []);
-
   return (
-    <div style={{ background: '#F5F2EB', minHeight: '100vh', fontFamily: 'sans-serif', margin: 0, padding: 0 }}>
-      
-      {/* 🗺️ INTEGRATED AJRAK BLUE NAVBAR */}
-      <nav style={{ 
-        background: "#1A2A6C", 
-        padding: "15px 30px", 
-        display: "flex", 
-        justifyContent: "space-between", 
-        alignItems: "center",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.1)"
-      }}>
-        <div style={{ color: "#F5F2EB", fontWeight: "bold", fontSize: "18px" }}>
-          Sindh Heritage Vault 🏛️
-        </div>
-        <div style={{ display: "flex", gap: "20px" }}>
-          <Link href="/" style={{ color: "#F5F2EB", textDecoration: "none", fontWeight: "500", fontSize: "15px" }}>
-            📝 Add Artifact (Public)
-          </Link>
-          <Link href="/archive" style={{ color: "#F5F2EB", textDecoration: "none", fontWeight: "500", fontSize: "15px" }}>
-            🖼️ Public Archive
-          </Link>
-        </div>
-      </nav>
-
-      {/* Main Content Area */}
-      <main style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
-        <header style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <h1 style={{ color: '#1A2A6C', fontSize: '32px', marginBottom: '10px' }}>
-            Sindh’s Minority Cultural Heritage Vault
-          </h1>
-          <p style={{ color: '#A38A73', fontSize: '18px' }}>
-            Explore the preserved history, artifacts, and stories of minority communities in Sindh.
-          </p>
-        </header>
-
-        {loading ? (
-          <p style={{ textAlign: 'center', color: '#1A2A6C', fontWeight: 'bold' }}>Loading sacred vault...</p>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '25px' }}>
-            {artifacts.length === 0 ? (
-              <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#666' }}>
-                No verified artifacts found. Awaiting admin approval for newly submitted stories!
-              </p>
-            ) : (
-              artifacts.map((item) => (
-                <div 
-                  key={item.id} 
-                  style={{ 
-                    background: 'white', 
-                    borderRadius: '12px', 
-                    padding: '25px', 
-                    boxShadow: '0 4px 15px rgba(0,0,0,0.05)', 
-                    borderTop: '5px solid #B22222',
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    justifyContent: 'space-between',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  <div>
-                    {/* 📸 IMAGE RENDERING BLOCK CODE */}
-                    {item.imageUrl ? (
-                      <div style={{ width: '100%', height: '200px', overflow: 'hidden', borderRadius: '8px', marginBottom: '15px', background: '#eee' }}>
-                        <img 
-                          src={item.imageUrl} 
-                          alt={item.title} 
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          onError={(e) => {
-                            // Agar link toota hua ho toh broken text handle karega
-                            (e.target as HTMLImageElement).style.display = 'none';
-                            console.log("Image failed to load from URL:", item.imageUrl);
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div style={{ width: '100%', height: '150px', background: '#EAEAEA', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '15px', color: '#777', fontSize: '14px' }}>
-                        No Image Available 📷
-                      </div>
-                    )}
-
-                    <h3 style={{ color: '#1A2A6C', marginTop: '0', fontSize: '22px', marginBottom: '12px' }}>{item.title}</h3>
-                    <p style={{ 
-                      color: '#555', 
-                      fontSize: '14px', 
-                      lineHeight: '1.6', 
-                      minHeight: '80px',
-                      marginBottom: '20px',
-                      wordBreak: 'break-word'
-                    }}>
-                      {item.description || 'No description provided for this heritage asset.'}
-                    </p>
-                  </div>
-                  
-                  <div style={{ 
-                    paddingTop: '15px', 
-                    borderTop: '1px solid #eee', 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '10px'
-                  }}>
-                    <span style={{ fontSize: '12px', background: '#EAEAEA', padding: '6px 10px', borderRadius: '4px', color: '#333', fontWeight: 'bold' }}>
-                      📍 {item.location || 'Unknown Origin'}
-                    </span>
-                    <button style={{ background: 'transparent', border: 'none', color: '#B22222', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}>
-                      Read Story →
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
+    <div className="heritage-shell">
+      <SiteNav />
+      <main>
+        <section className="section-pad" style={{ background: '#14110f', color: '#fff' }}>
+          <div className="heritage-container">
+            <p style={{ color: '#d4a373', fontWeight: 800, margin: '0 0 10px' }}>Digital Archive</p>
+            <h1 style={{ fontSize: 'clamp(32px, 6vw, 64px)', lineHeight: 1, margin: 0, maxWidth: 860 }}>
+              Explore Sindh's minority cultural heritage records.
+            </h1>
+            <p style={{ color: '#d8d2ca', fontSize: 17, lineHeight: 1.7, maxWidth: 760 }}>
+              Search documented sites by community, location, preservation status, and historical importance.
+            </p>
           </div>
-        )}
+        </section>
+
+        <section className="section-pad">
+          <div className="heritage-container">
+            <div className="heritage-card" style={{ padding: 20, marginBottom: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 190px auto', gap: 12 }}>
+                <input
+                  className="heritage-input"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search Sadhu Bela, Jain temples, Karachi, Sufi..."
+                />
+                <select className="heritage-select" value={community} onChange={(event) => setCommunity(event.target.value)}>
+                  {communities.map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </select>
+                <button className="heritage-button" onClick={askAi} disabled={loadingAi}>
+                  {loadingAi ? 'Thinking...' : 'Ask Heritage AI'}
+                </button>
+              </div>
+              {aiResponse && (
+                <div style={{ marginTop: 16, borderLeft: '4px solid #a44a3f', background: '#fff7ed', padding: 16, lineHeight: 1.65 }}>
+                  <strong>AI Cultural Guide</strong>
+                  <div style={{ whiteSpace: 'pre-wrap', marginTop: 8 }}>{aiResponse}</div>
+                </div>
+              )}
+            </div>
+
+            <div className="heritage-grid">
+              {filtered.map((item) => (
+                <article className="heritage-card" key={item.id}>
+                  <img src={item.imageUrl} alt={item.title} style={{ width: '100%', height: 210, objectFit: 'cover' }} />
+                  <div style={{ padding: 20 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+                      <span style={{ color: '#a44a3f', fontWeight: 800, fontSize: 13 }}>{item.community}</span>
+                      <span style={{ color: '#78716c', fontSize: 13 }}>{item.preservationStatus}</span>
+                    </div>
+                    <h2 style={{ margin: '0 0 8px', color: '#1c1917', fontSize: 22 }}>{item.title}</h2>
+                    <p style={{ color: '#57534e', lineHeight: 1.6, minHeight: 78 }}>{item.shortDescription}</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                      <span style={{ color: '#78716c', fontSize: 13 }}>{item.region}</span>
+                      <Link className="heritage-button" href={`/archive/${item.slug}`}>Read Story</Link>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
     </div>
+  );
+}
+
+function SiteNav() {
+  return (
+    <nav className="heritage-nav">
+      <div className="heritage-container heritage-nav-inner">
+        <Link className="heritage-brand" href="/">
+          <span className="heritage-logo">SC</span>
+          <span>
+            <span style={{ display: 'block', color: '#d4a373', fontWeight: 900 }}>Sindh Culture</span>
+            <span style={{ display: 'block', color: '#a8a29e', fontSize: 12 }}>Digital Preservation Platform</span>
+          </span>
+        </Link>
+        <div className="heritage-links">
+          <Link className="heritage-link" href="/archive">Archive</Link>
+          <Link className="heritage-link" href="/map">Map</Link>
+          <Link className="heritage-link" href="/timeline">Timeline</Link>
+          <Link className="heritage-link" href="/oral-histories">Oral Histories</Link>
+          <Link className="heritage-link" href="/submit-artifact">Contribute</Link>
+          <Link className="heritage-link" href="/admin-portal-sindh">Admin</Link>
+        </div>
+      </div>
+    </nav>
   );
 }
