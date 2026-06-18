@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 
 type GeminiAction = "search" | "summary" | "translate" | "polish";
+const GEMINI_MODELS = [
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+  "gemini-flash-lite-latest",
+];
 
 function buildPrompt(action: GeminiAction, input: string) {
   if (action === "summary") {
@@ -73,22 +78,68 @@ export async function POST(request: Request) {
     const prompt = buildPrompt(action, searchTerm.trim());
 
     const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-    });
+    let lastError = "";
+    let text = "";
 
-    const text = response.text || "Sorry, AI se response nahi mila.";
+    for (const model of GEMINI_MODELS) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: prompt,
+        });
+
+        text = response.text || "";
+        if (text) break;
+      } catch (error: any) {
+        lastError = parseGeminiError(error);
+      }
+    }
+
+    if (!text) {
+      return NextResponse.json(
+        {
+          error: {
+            message:
+              lastError ||
+              "AI service abhi busy hai. Please thori dair baad dobara try karein.",
+          },
+        },
+        { status: 503 }
+      );
+    }
 
     return NextResponse.json({ text });
   } catch (error: any) {
     return NextResponse.json(
       {
         error: {
-          message: error.message || "Internal server error",
+          message: parseGeminiError(error) || "Internal server error",
         },
       },
       { status: 500 }
     );
   }
+}
+
+function parseGeminiError(error: any) {
+  const rawMessage = error?.message || String(error || "");
+
+  try {
+    const jsonStart = rawMessage.indexOf("{");
+    if (jsonStart >= 0) {
+      const parsed = JSON.parse(rawMessage.slice(jsonStart));
+      const message = parsed?.error?.message;
+      if (message?.includes("high demand") || parsed?.error?.code === 503) {
+        return "AI model abhi high demand par hai. Backup model bhi busy tha, thori dair baad try karein.";
+      }
+      if (message) return message;
+    }
+  } catch {
+  }
+
+  if (rawMessage.includes("high demand") || rawMessage.includes("503")) {
+    return "AI model abhi high demand par hai. Thori dair baad dobara try karein.";
+  }
+
+  return rawMessage;
 }

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { communities, heritageArtifacts } from '../../data/heritageData';
+import { askHeritageAi, friendlyAiError } from '../lib/ai-client';
 
 export default function ArchivePage() {
   const [query, setQuery] = useState('');
@@ -24,15 +25,9 @@ export default function ArchivePage() {
     setLoadingAi(true);
     setAiResponse('');
     try {
-      const response = await fetch('/api/gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'search', searchTerm: query }),
-      });
-      const data = await response.json();
-      setAiResponse(response.ok ? data.text : data?.error?.message || 'AI request failed.');
-    } catch (error: any) {
-      setAiResponse(error.message || 'AI request failed.');
+      setAiResponse(await askHeritageAi({ action: 'search', searchTerm: query }));
+    } catch (error) {
+      setAiResponse(friendlyAiError(error));
     } finally {
       setLoadingAi(false);
     }
@@ -57,7 +52,7 @@ export default function ArchivePage() {
         <section className="section-pad">
           <div className="heritage-container">
             <div className="heritage-card" style={{ padding: 20, marginBottom: 24 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 190px auto', gap: 12 }}>
+              <div className="archive-search-row">
                 <input
                   className="heritage-input"
                   value={query}
@@ -120,6 +115,7 @@ function SiteNav() {
         </Link>
         <div className="heritage-links">
           <Link className="heritage-link" href="/archive">Archive</Link>
+          <Link className="heritage-link" href="/museum">Museum</Link>
           <Link className="heritage-link" href="/map">Map</Link>
           <Link className="heritage-link" href="/timeline">Timeline</Link>
           <Link className="heritage-link" href="/oral-histories">Oral Histories</Link>

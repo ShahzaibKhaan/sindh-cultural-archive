@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { heritageArtifacts, oralHistories, timelineEpochs } from '../data/heritageData';
+import { askHeritageAi, friendlyAiError } from './lib/ai-client';
 
 const featured = heritageArtifacts.slice(0, 3);
 
@@ -16,15 +17,9 @@ export default function HomePage() {
     setLoading(true);
     setAiResponse('');
     try {
-      const response = await fetch('/api/gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'search', searchTerm: query }),
-      });
-      const data = await response.json();
-      setAiResponse(response.ok ? data.text : data?.error?.message || 'AI request failed.');
-    } catch (error: any) {
-      setAiResponse(error.message || 'AI request failed.');
+      setAiResponse(await askHeritageAi({ action: 'search', searchTerm: query }));
+    } catch (error) {
+      setAiResponse(friendlyAiError(error));
     } finally {
       setLoading(false);
     }
@@ -35,7 +30,7 @@ export default function HomePage() {
       <SiteNav />
       <main>
         <section style={{ background: '#14110f', color: '#fff' }}>
-          <div className="heritage-container" style={{ minHeight: 'calc(100vh - 68px)', display: 'grid', gridTemplateColumns: 'minmax(0, 1.05fr) minmax(280px, 0.95fr)', gap: 28, alignItems: 'center', padding: '42px 0' }}>
+          <div className="heritage-container hero-split" style={{ minHeight: 'calc(100vh - 68px)', padding: '42px 0' }}>
             <div>
               <p style={{ color: '#d4a373', fontWeight: 900, margin: '0 0 12px' }}>Final Year Project</p>
               <h1 style={{ fontSize: 'clamp(38px, 7vw, 78px)', lineHeight: 0.96, margin: 0 }}>
@@ -46,6 +41,7 @@ export default function HomePage() {
               </p>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 26 }}>
                 <Link className="heritage-button" href="/archive">Explore Archive</Link>
+                <Link className="heritage-button secondary" href="/museum">Enter Virtual Museum</Link>
                 <Link className="heritage-button secondary" href="/submit-artifact">Contribute Record</Link>
               </div>
             </div>
@@ -67,13 +63,13 @@ export default function HomePage() {
               <Stat label="Heritage Records" value={heritageArtifacts.length.toString()} />
               <Stat label="Timeline Epochs" value={timelineEpochs.length.toString()} />
               <Stat label="Oral Histories" value={oralHistories.length.toString()} />
-              <Stat label="AI Features" value="4" />
+              <Stat label="Museum Rooms" value="3" />
             </div>
 
             <div className="heritage-card" style={{ padding: 22 }}>
               <p style={{ color: '#a44a3f', fontWeight: 900, margin: 0 }}>Ask Sindh Heritage AI</p>
               <h2 style={{ margin: '8px 0 12px' }}>Research assistant for visitors and examiners</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 12 }}>
+              <div className="ai-search-row">
                 <input
                   className="heritage-input"
                   value={query}
@@ -98,6 +94,7 @@ export default function HomePage() {
             <h2 style={{ fontSize: 'clamp(28px, 5vw, 46px)', marginTop: 0 }}>Main Modules</h2>
             <div className="heritage-grid">
               <Module title="All Heritage Records" href="/archive" body="Filter and search approved cultural records with AI support." />
+              <Module title="Virtual Museum" href="/museum" body="Room-based exhibit viewer with focused artifact panels and archive links." />
               <Module title="Artifact Detail Pages" href="/archive/sadhu-bela-temple" body="View architecture, preservation status, metadata, sources, summary, and translation." />
               <Module title="Interactive Sindh Map" href="/map" body="Explore records by region through a visual map experience." />
               <Module title="Historical Timeline" href="/timeline" body="Story-mode timeline from ancient Sindh to modern preservation." />
@@ -143,6 +140,7 @@ function SiteNav() {
         </Link>
         <div className="heritage-links">
           <Link className="heritage-link" href="/archive">Archive</Link>
+          <Link className="heritage-link" href="/museum">Museum</Link>
           <Link className="heritage-link" href="/map">Map</Link>
           <Link className="heritage-link" href="/timeline">Timeline</Link>
           <Link className="heritage-link" href="/oral-histories">Oral Histories</Link>

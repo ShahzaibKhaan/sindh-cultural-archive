@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { askHeritageAi } from '../lib/ai-client';
 
 type PendingRecord = {
   id: string;
@@ -66,17 +67,10 @@ export default function AdminDashboard() {
   const polishRecord = async (record: PendingRecord) => {
     setAiLoadingId(record.id);
     try {
-      const response = await fetch('/api/gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'polish', text: record.description }),
-      });
-      const data = await response.json();
-      if (response.ok && data.text) {
-        const next = pendingList.map((item) => item.id === record.id ? { ...item, description: data.text } : item);
-        setPendingList(next);
-        updateStorage(next);
-      }
+      const improvedDescription = await askHeritageAi({ action: 'polish', text: record.description });
+      const next = pendingList.map((item) => item.id === record.id ? { ...item, description: improvedDescription } : item);
+      setPendingList(next);
+      updateStorage(next);
     } finally {
       setAiLoadingId('');
     }
@@ -104,6 +98,7 @@ export default function AdminDashboard() {
           <Link className="heritage-brand" href="/"><span className="heritage-logo">SC</span><span style={{ color: '#d4a373', fontWeight: 900 }}>Admin Portal</span></Link>
           <div className="heritage-links">
             <Link className="heritage-link" href="/archive">Archive</Link>
+            <Link className="heritage-link" href="/museum">Museum</Link>
             <Link className="heritage-link" href="/submit-artifact">Contribute</Link>
             <button onClick={() => setIsUnlocked(false)} className="heritage-link" style={{ background: 'transparent', border: 0, cursor: 'pointer' }}>Lock</button>
           </div>
@@ -131,7 +126,7 @@ export default function AdminDashboard() {
             <div style={{ display: 'grid', gap: 16 }}>
               {pendingList.map((item) => (
                 <article className="heritage-card" key={item.id} style={{ padding: 18 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '150px minmax(0, 1fr)', gap: 16 }}>
+                  <div className="review-row">
                     <img src={item.imageUrl} alt={item.title} style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 8, background: '#eee' }} />
                     <div>
                       <p style={{ color: '#a44a3f', margin: 0, fontWeight: 900 }}>{item.community} - {item.region}</p>

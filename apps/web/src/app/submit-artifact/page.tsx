@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { communities } from '../../data/heritageData';
+import { askHeritageAi, friendlyAiError } from '../lib/ai-client';
 
 export default function SubmitArtifactPage() {
   const [title, setTitle] = useState('');
@@ -20,16 +21,9 @@ export default function SubmitArtifactPage() {
     }
     setAiLoading(true);
     try {
-      const response = await fetch('/api/gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'polish', text: description }),
-      });
-      const data = await response.json();
-      if (response.ok && data.text) setDescription(data.text);
-      else setStatusMessage(data?.error?.message || 'AI improvement failed.');
-    } catch (error: any) {
-      setStatusMessage(error.message || 'AI improvement failed.');
+      setDescription(await askHeritageAi({ action: 'polish', text: description }));
+    } catch (error) {
+      setStatusMessage(friendlyAiError(error));
     } finally {
       setAiLoading(false);
     }
@@ -92,7 +86,7 @@ export default function SubmitArtifactPage() {
                 <input className="heritage-input" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Sadhu Bela Temple" />
               </label>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div className="form-two">
                 <label>
                   <strong>Region or City *</strong>
                   <input className="heritage-input" value={region} onChange={(event) => setRegion(event.target.value)} placeholder="Sukkur" />
@@ -144,6 +138,7 @@ function Nav() {
         <Link className="heritage-brand" href="/"><span className="heritage-logo">SC</span><span style={{ color: '#d4a373', fontWeight: 900 }}>Sindh Culture</span></Link>
         <div className="heritage-links">
           <Link className="heritage-link" href="/archive">Archive</Link>
+          <Link className="heritage-link" href="/museum">Museum</Link>
           <Link className="heritage-link" href="/map">Map</Link>
           <Link className="heritage-link" href="/timeline">Timeline</Link>
           <Link className="heritage-link" href="/oral-histories">Oral Histories</Link>

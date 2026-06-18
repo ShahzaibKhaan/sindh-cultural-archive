@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { useState } from 'react';
 import { getArtifactBySlug } from '../../../data/heritageData';
+import { askHeritageAi, friendlyAiError } from '../../lib/ai-client';
 
 type Props = {
   params: { id: string };
@@ -20,15 +21,9 @@ export default function ArtifactDetailPage({ params }: Props) {
     setLoadingAction(action);
     setAiText('');
     try {
-      const response = await fetch('/api/gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, text: artifact.description }),
-      });
-      const data = await response.json();
-      setAiText(response.ok ? data.text : data?.error?.message || 'AI request failed.');
-    } catch (error: any) {
-      setAiText(error.message || 'AI request failed.');
+      setAiText(await askHeritageAi({ action, text: artifact.description }));
+    } catch (error) {
+      setAiText(friendlyAiError(error));
     } finally {
       setLoadingAction('');
     }
@@ -41,7 +36,7 @@ export default function ArtifactDetailPage({ params }: Props) {
         <section style={{ background: '#14110f', color: '#fff' }}>
           <div className="heritage-container" style={{ padding: '42px 0 34px' }}>
             <Link href="/archive" style={{ color: '#d4a373', textDecoration: 'none', fontWeight: 800 }}>Back to Archive</Link>
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(280px, 470px)', gap: 28, alignItems: 'center', marginTop: 22 }}>
+            <div className="detail-hero" style={{ marginTop: 22 }}>
               <div>
                 <p style={{ color: '#d4a373', margin: '0 0 10px', fontWeight: 900 }}>{artifact.community} Heritage</p>
                 <h1 style={{ fontSize: 'clamp(34px, 6vw, 66px)', lineHeight: 1, margin: 0 }}>{artifact.title}</h1>
@@ -114,6 +109,7 @@ function SimpleNav() {
         <Link className="heritage-brand" href="/"><span className="heritage-logo">SC</span><span style={{ color: '#d4a373', fontWeight: 900 }}>Sindh Culture</span></Link>
         <div className="heritage-links">
           <Link className="heritage-link" href="/archive">Archive</Link>
+          <Link className="heritage-link" href="/museum">Museum</Link>
           <Link className="heritage-link" href="/map">Map</Link>
           <Link className="heritage-link" href="/timeline">Timeline</Link>
           <Link className="heritage-link" href="/oral-histories">Oral Histories</Link>

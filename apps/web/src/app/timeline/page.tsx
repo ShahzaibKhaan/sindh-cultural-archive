@@ -64,6 +64,7 @@ function Nav() {
         <Link className="heritage-brand" href="/"><span className="heritage-logo">SC</span><span style={{ color: '#d4a373', fontWeight: 900 }}>Sindh Culture</span></Link>
         <div className="heritage-links">
           <Link className="heritage-link" href="/archive">Archive</Link>
+          <Link className="heritage-link" href="/museum">Museum</Link>
           <Link className="heritage-link" href="/map">Map</Link>
           <Link className="heritage-link" href="/timeline">Timeline</Link>
           <Link className="heritage-link" href="/oral-histories">Oral Histories</Link>
